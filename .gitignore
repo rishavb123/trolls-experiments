@@ -132,3 +132,5 @@ dmypy.json
 activate.bat
 .vscode
 **/data
+**/logs
+**/logdir
