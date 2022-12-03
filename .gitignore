@@ -131,3 +131,4 @@ dmypy.json
 # My ignores
 activate.bat
 .vscode
+**/data
