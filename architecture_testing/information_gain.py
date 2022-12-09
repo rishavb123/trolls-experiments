@@ -1,17 +1,34 @@
+import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 
-# from constants import ALPHA, BETA
+from constants import ALPHA, BETA
 
-def calculate_information_gains(model, test_ds, loss_object=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)):
+
+def calculate_information_gains(model, test_ds, loss_object=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), log=False):
+    lprint = lambda *args, **kwargs: print(*args, **kwargs) if log else None
+
     @tf.function
-    def information_gain_step(images, labels, idx=0, label_offset=1):
-        print('---------------------------')
+    def information_gain_step(images, labels, idx=0, set_label=None, label_offset=1):
+
+        lprint('---------------------------')
+
 
         images = images[idx: idx + 1]
         labels = labels[idx: idx + 1]
-        print(tf.get_static_value(labels), '-->', end=' ')
+
+        old_label = tf.get_static_value(labels)[0]
+        lprint(old_label, '-->', end=' ')
+
+
         labels = (labels + label_offset) % 10
-        print(tf.get_static_value(labels))
+        if set_label is not None:
+            labels = tf.constant([set_label]) 
+
+        new_label = tf.get_static_value(labels)[0]
+        lprint(new_label)
+
+        images = [tf.Variable(inp) for inp in images]
 
         with tf.GradientTape(persistent=True) as tape:
             predictions = model(images, training=False)
@@ -24,20 +41,34 @@ def calculate_information_gains(model, test_ds, loss_object=tf.keras.losses.Spar
                 norm_grads += tf.math.square(tf.norm(grad))
             return norm_grads
 
-        theta_grad_norm = calc_gradients(model.trainable_variables)
+        theta_grad_norm = 0
+        inpt_grad_norm = 0
 
-        # del tape
+        if ALPHA > 0:
+            theta_grad_norm = calc_gradients(model.trainable_variables)
+        if BETA > 0:
+            inpt_grad_norm = calc_gradients(images)
 
-        info_gain = tf.get_static_value(theta_grad_norm)
-        # info_gain = ALPHA * theta_grad_norm + BETA * inpt_grad_norm
+        info_gain = ALPHA * theta_grad_norm + BETA * inpt_grad_norm
 
-        print(info_gain)
+        info_gain = tf.get_static_value(info_gain)
 
-        return info_gain
+        lprint(info_gain)
 
-    c = 0
+        del tape
 
-    for test_images, test_labels in test_ds:
-        c += 1
-        if c > 10: break
-        information_gain_step(test_images, test_labels)
+        return info_gain, old_label, new_label
+
+
+    total_info_gains = np.zeros((10, 10))
+    counts = np.zeros((10, 10))
+
+    for test_images, test_labels in tqdm(test_ds):
+        n = len(test_images)
+        for new_label in range(10):
+            for i in range(n):
+                info_gain, old_label, new_label = information_gain_step(test_images, test_labels, idx=i, set_label=new_label)
+                total_info_gains[old_label, new_label] += info_gain
+                counts[old_label, new_label] += 1
+
+    return total_info_gains / counts
