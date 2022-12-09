@@ -24,7 +24,7 @@ class CNNModel(SeqModel):
 class CNNModel2(SeqModel):
 
     def __init__(self):
-        super(CNNModel, self).__init__([
+        super(CNNModel2, self).__init__([
             tf.keras.layers.Conv2D(64, 3, activation='relu'),
             tf.keras.layers.Conv2D(64, 5, activation='relu'),
             tf.keras.layers.Flatten(),
