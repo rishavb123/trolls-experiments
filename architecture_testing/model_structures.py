@@ -41,4 +41,13 @@ class DenseModel(SeqModel):
             tf.keras.layers.Dense(10)
         ])
 
-ModelClasses = [CNNModel, CNNModel2, DenseModel]
+class DenseModel2(SeqModel):
+    def __init__(self):
+        super(DenseModel2, self).__init__([
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dense(512, activation='relu'),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dense(10)
+        ])
+
+ModelClasses = [CNNModel, CNNModel2, DenseModel, DenseModel2]
